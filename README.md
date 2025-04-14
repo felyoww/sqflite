@@ -49,53 +49,163 @@ In this tutorial, we will make simple "TO DO LIST APP" by implementing database 
     
 
    ```
-3. After that, go back to task.dart to add constructur. Define the tableName as "Task" and define the coloumn name in database
+3. After that, go back to task.dart to add constructur. Define the tableName as "Task" and define the coloumn name in database, also define each of column as list of string.
    ```
      import 'task_type.dart';
   
-  const String tableName = "tasks";
-  
-  const String idField = "_id";
-  const String titleField = "title";
-  const String descriptionField = "description";
-  const String dueDateField = "due_date";
-  const String taskTypeField = "task_type";
-  const String isDoneField = "is_done";
-  
-  const List<String> taskColumns = [
-    idField,
-    titleField,
-    descriptionField,
-    dueDateField,
-    taskTypeField,
-    isDoneField
-  ];
-  
-  const String boolType = "BOOLEAN NOT NULL";
-  const String idType = "INTEGER PRIMARY KEY AUTOINCREMENT";
-  const String textTypeNullable = "TEXT";
-  const String textType = "TEXT NOT NULL";
-  
-  class Task {
-    final int? id;
-    final String title;
-    final String? description;
-    final DateTime dueDate;
-    final TaskType taskType;
-    final bool isDone;
-  
-    const Task({
-      this.id,
-      required this.title,
-      this.description,
-      required this.dueDate,
-      required this.taskType,
-      required this.isDone,
-    });
+     const String tableName = "tasks";
+     
+     const String idField = "_id";
+     const String titleField = "title";
+     const String descriptionField = "description";
+     const String dueDateField = "due_date";
+     const String taskTypeField = "task_type";
+     const String isDoneField = "is_done";
+     
+     const List<String> taskColumns = [
+       idField,
+       titleField,
+       descriptionField,
+       dueDateField,
+       taskTypeField,
+       isDoneField
+     ];
+     
+     const String boolType = "BOOLEAN NOT NULL";
+     const String idType = "INTEGER PRIMARY KEY AUTOINCREMENT";
+     const String textTypeNullable = "TEXT";
+     const String textType = "TEXT NOT NULL";
+     
+     class Task {
+       final int? id;
+       final String title;
+       final String? description;
+       final DateTime dueDate;
+       final TaskType taskType;
+       final bool isDone;
+     
+       const Task({
+         this.id,
+         required this.title,
+         this.description,
+         required this.dueDate,
+         required this.taskType,
+         required this.isDone,
+       });
 
 
    ```
-5. 
+4. Create 2 json method
+   ```
+      static Task fromJson(Map<String, dynamic> json) => Task(
+       id: json[idField] as int?,
+       title: json[titleField] as String,
+       description: json[descriptionField] as String?,
+       dueDate: DateTime.parse(json[dueDateField] as String),
+       taskType: TaskTypeExtension.fromString(json[taskTypeField] as String),
+       isDone: json[isDoneField] == 1,
+     );
+   
+     Map<String, dynamic> toJson() => {
+       idField: id,
+       titleField : title,
+       descriptionField  : description,
+       dueDateField : dueDate.toIso8601String(),
+       taskTypeField : taskType.name,
+       isDoneField : isDone ? 1 : 0,
+     };
+
+   ```
+5. Next, adding copywith methode to enaby for easy this realization, serialization, and update task class
+   ```
+      Task copyWith ({
+       int? id,
+       String? title,
+       String? description,
+       DateTime? dueDate,
+       TaskType? taskType,
+       bool? isDone,
+   }) =>
+         Task(
+           id: id ?? this.id,
+           title: title ?? this.title,
+           description: description ?? this.description,
+           dueDate: dueDate ?? this.dueDate,
+           taskType: taskType ?? this.taskType,
+           isDone: isDone ?? this.isDone,
+         );
+   
+   }
+   
+6. Go back to Lib folder, make new database folder with name "app_database.dart". Then, get initialize DB methode. Inside it, we set the database path using sqflite package, then join the db path and fileName.
+   ```
+      import 'dart:convert';
+      import 'package:sqflite/sqflite.dart';
+      import 'package:path/path.dart';
+      import '../models/task.dart';
+      
+      const String fileName = "task_database.db";
+      
+      class AppDatabase {
+        AppDatabase._init();
+      
+        static final AppDatabase instance = AppDatabase._init();
+      
+        static Database? _database;
+      
+        Future<Database> get database async {
+          if (_database != null) return _database!;
+          _database = await _initializeDB(fileName);
+          return _database!;
+        }
+      
+        Future _createDB(Database db, int version) async {
+          await db.execute('''
+            CREATE TABLE $tableName(
+              $idField $idType,
+              $titleField $textType,
+              $descriptionField $textTypeNullable,
+              $dueDateField $textType,
+              $taskTypeField $textType,
+              $isDoneField $boolType    
+            )
+          ''');
+        }
+      
+        Future<Database> _initializeDB(String fileName) async {
+          final dbPath = await getDatabasesPath();
+          final path = join(dbPath, fileName);
+          return await openDatabase(path, version: 1, onCreate: _createDB);
+        }
+
+   ```
+8. Add _createDB callback to create query from task.dart file
+9. Then, create read feature by adding readAllTask methode
+    ```
+       Future<List<Task?>> readAllTasks() async {
+       final db = await instance.database;
+       final result = await db.query(tableName, orderBy: "$dueDateField DESC");
+       return result.map((json) => Task.fromJson(json)).toList();
+     }
+    ```
+10. Create task to call db.insert methode that used to ask task
+    ```
+        Future<Task> createTask(Task task) async {
+       final db = await instance.database;
+       final id = await db.insert(tableName, task.toJson());
+       return task.copyWith(id: id);
+     }
+    ```
+12. Finally in database, add close methode to close database when not use
+    ```
+       Future<void> close() async {
+       final db = await instance.database;
+       return db.close();
+     }
+    ```
+    
+**Making The UI , and Connectin It**
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.
