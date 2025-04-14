@@ -1,5 +1,8 @@
 # SQFLITE
 
+Fellyla Fiorenza Wilianto
+5025221110
+
 Video Tutorial URL : https://youtu.be/bihC6ou8FqQ?si=cSnDDK1oyaUJwAhA
 
 In this tutorial, we will make simple "TO DO LIST APP" by implementing database from sqflite package. This app used to make some sort of to do list, and user can mark their list as completed when they already finished it in real life.
